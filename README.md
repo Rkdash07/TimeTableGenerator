@@ -1,1 +1,1 @@
-#Automatic Time Table Genarator
+# Automatic Time Table Genarator
