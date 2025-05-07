@@ -16,34 +16,66 @@
 session_start();
 include("../../connection.php");
 
-
-if (isset($_SESSION['professors'])) {
+if (isset($_SESSION['faculties'])) {
     session_unset(); 
 }
 
-
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (!empty($_POST['professors'])) {
-        $professors = explode("\n", trim($_POST['professors']));
+    if (!empty($_POST['faculties'])) {
+        $faculties = explode("\n", trim($_POST['faculties']));
     } else {
-        $professors = []; 
+        $faculties = []; 
     }
 
     $subjects = $_POST['subjects'];
     $allocations = $_POST['allocations'];
+    $lecture_per_week = $_POST['lecture_per_week'];
 
-
-    $_SESSION['professors'] = $professors;
+    $_SESSION['faculties'] = $faculties;
     $_SESSION['subjects'] = $subjects;
     $_SESSION['allocations'] = $allocations;
 
-    // Redirect to avoid form resubmission on refresh
     header('Location: table.php');
+    if (!empty($subjects) && !empty($allocations)) {
+        foreach ($subjects as $idx => $subject_name) {
+            $lecture_count = isset($lecture_per_week[$idx]) ? intval($lecture_per_week[$idx]) : 3;
+            $sub_stmt = $conn->prepare("SELECT sno FROM subjects WHERE subject_name = ?");
+            $sub_stmt->bind_param("s", $subject_name);
+            $sub_stmt->execute();
+            $sub_result = $sub_stmt->get_result();
+            $sub_row = $sub_result->fetch_assoc();
+            $subject_id = $sub_row ? $sub_row['sno'] : null;
+            $sub_stmt->close();
+
+            if ($subject_id) {
+                foreach (['sectionA', 'sectionB', 'sectionC'] as $section) {
+                    $faculty_name = $allocations[$section][$idx] ?? '';
+                    if ($faculty_name) {
+                        $fac_stmt = $conn->prepare("SELECT fno FROM faculties WHERE faculty = ?");
+                        $fac_stmt->bind_param("s", $faculty_name);
+                        $fac_stmt->execute(); 
+                        $fac_result = $fac_stmt->get_result();
+                        $fac_row = $fac_result->fetch_assoc();
+                        $faculty_id = $fac_row ? $fac_row['fno'] : null;
+                        $fac_stmt->close();
+
+                        if ($faculty_id) {
+                            $insert_stmt = $conn->prepare("INSERT INTO subject_faculty (subject_id, faculty_id, section, lecture_per_week) VALUES (?, ?, ?, ?)
+                            ON DUPLICATE KEY UPDATE faculty_id = VALUES(faculty_id), lecture_per_week = VALUES(lecture_per_week)");
+                        $insert_stmt->bind_param("iisi", $subject_id, $faculty_id, $section, $lecture_count);
+                        $insert_stmt->execute();
+                        $insert_stmt->close();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     exit();
 }
 
-// Fetch professors, subjects, and allocations from the session
-$professors = isset($_SESSION['professors']) ? $_SESSION['professors'] : [];
+$faculties = isset($_SESSION['faculties']) ? $_SESSION['faculties'] : [];
 $subjects = isset($_SESSION['subjects']) ? $_SESSION['subjects'] : [];
 $allocations = isset($_SESSION['allocations']) ? $_SESSION['allocations'] : [];
 ?>
@@ -188,9 +220,7 @@ $allocations = isset($_SESSION['allocations']) ? $_SESSION['allocations'] : [];
             </div>
         </nav>
 
-        <!-- Form Section -->
         <div class="container-fluid py-4">
-            <!-- Timetable Form Card -->
             <div class="card my-4">
                 <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
                     <div class="bg-gradient-secondary shadow-primary border-radius-lg pt-4 pb-3">
@@ -199,88 +229,94 @@ $allocations = isset($_SESSION['allocations']) ? $_SESSION['allocations'] : [];
                 </div>
                 <div class="card-body px-0 pb-2">
                     <div class="form-container">
-                        <form method="POST" action="" id="timetableForm">
+                        <form method="POST" action="generate.php" id="timetableForm">
 
                             
                             <div class="form-group">
                                 <label>Add Subjects and Assign Professors to Sections</label>
                                 <table class="table align-items-center mb-0" id="subjectsTable">
-                                    <thead>
-                                        <tr>
-                                            <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
-                                                Subject</th>
-                                            <th
-                                                class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">
-                                                Assign Professors for Each Section</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="subject-rows">
-                                        <?php
-                                        
-                                        
-                                        if (!empty($subjects)) { 
-                                            foreach ($subjects as $key => $subject) {
-                                                ?>
-                                                <tr>
-                                                    <td>
-                                                        <select class="form-control" name="subjects[]" required>
-                                                            <option value="">Select Subject</option>
-                                                            <?php
-                                                            foreach ($subjects as $sub) { // Loop through subjects array
-                                                                echo '<option value="' . htmlspecialchars($sub) . '">' . htmlspecialchars($sub) . '</option>';
-                                                            }
-                                                            ?>
-                                                        </select>
-                                                    </td>
-                                            
-                                                        <div>
-                                                            <label for="sectionA">Section A</label>
-                                                            <select class="form-control"
-                                                                name="allocations[sectionA][]" required>
-                                                                <option value="">Select Professor</option>
-                                                                <?php foreach ($professors as $professor) { ?>
-                                                                    <option value="<?php echo $professor; ?>" <?php echo (isset($allocations['sectionA'][$key]) && $allocations['sectionA'][$key] == $professor) ? 'selected' : ''; ?>>
-                                                                        <?php echo $professor; ?></option>
-                                                                <?php } ?>
-                                                            </select>
-                                                        </div>
-                                                        <div>
-                                                            <label for="sectionB">Section B</label>
-                                                            <select class="form-control"
-                                                                name="allocations[sectionB][]" required>
-                                                                <option value="">Select Professor</option>
-                                                                <?php foreach ($professors as $professor) { ?>
-                                                                    <option value="<?php echo $professor; ?>" <?php echo (isset($allocations['sectionB'][$key]) && $allocations['sectionB'][$key] == $professor) ? 'selected' : ''; ?>>
-                                                                        <?php echo $professor; ?></option>
-                                                                <?php } ?>
-                                                            </select>
-                                                        </div>
-                                                        <div>
-                                                            <label for="sectionC">Section C</label>
-                                                            <select class="form-control"
-                                                                name="allocations[sectionC][]" required>
-                                                                <option value="">Select Professor</option>
-                                                                <?php foreach ($professors as $professor) { ?>
-                                                                    <option value="<?php echo $professor; ?>" <?php echo (isset($allocations['sectionC'][$key]) && $allocations['sectionC'][$key] == $professor) ? 'selected' : ''; ?>>
-                                                                        <?php echo $professor; ?></option>
-                                                                <?php } ?>
-                                                            </select>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                <?php
-                                            }
-                                        }
-                                        ?>
-                                    </tbody>
+                                <thead>
+    <tr>
+        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
+            Subject
+        </th>
+        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">
+            Lectures/Week
+        </th>
+        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">
+            Assign Professors for Each Section
+        </th>
+    </tr>
+</thead>
+<tbody id="subject-rows">
+<?php
+if (!empty($subjects)) { 
+    foreach ($subjects as $key => $subject) {
+        ?>
+        <tr>
+        <td>
+                <select class="form-control" name="subjects[]" required>
+                    <option value="">Select Subject</option>
+                    <?php
+                    foreach ($subjects as $sub) {
+                        echo '<option value="' . htmlspecialchars($sub) . '">' . htmlspecialchars($sub) . '</option>';
+                    }
+                    ?>
+                </select>
+            </td>
+            <td>
+        <input type="number" class="form-control" 
+               name="lecture_per_week[]" 
+               min="1" max="10" 
+               value="3" required>
+          </td>
+            
+            <td>
+                <div>
+                    <label for="sectionA">Section A</label>
+                    <select class="form-control" name="allocations[sectionA][]" required>
+                        <option value="">Select Professor</option>
+                        <?php foreach ($professors as $professor) { ?>
+                            <option value="<?php echo $professor; ?>" <?php echo (isset($allocations['sectionA'][$key]) && $allocations['sectionA'][$key] == $professor) ? 'selected' : ''; ?>>
+                                <?php echo $professor; ?></option>
+                        <?php } ?>
+                    </select>
+                </div>
+                <div>
+                    <label for="sectionB">Section B</label>
+                    <select class="form-control" name="allocations[sectionB][]" required>
+                        <option value="">Select Professor</option>
+                        <?php foreach ($professors as $professor) { ?>
+                            <option value="<?php echo $professor; ?>" <?php echo (isset($allocations['sectionB'][$key]) && $allocations['sectionB'][$key] == $professor) ? 'selected' : ''; ?>>
+                                <?php echo $professor; ?></option>
+                        <?php } ?>
+                    </select>
+                </div>
+                <div>
+                    <label for="sectionC">Section C</label>
+                    <select class="form-control" name="allocations[sectionC][]" required>
+                        <option value="">Select Professor</option>
+                        <?php foreach ($professors as $professor) { ?>
+                            <option value="<?php echo $professor; ?>" <?php echo (isset($allocations['sectionC'][$key]) && $allocations['sectionC'][$key] == $professor) ? 'selected' : ''; ?>>
+                                <?php echo $professor; ?></option>
+                        <?php } ?>
+                    </select>
+                </div>
+            </td>
+        </tr>
+        <?php
+    }
+}
+?>
+</tbody>
+
                                 </table>
                                 <button type="button" class="btn btn-secondary" onclick="addSubjectRow()">Add More
                                     Subjects</button>
                             </div>
 
-                            <!-- Submit Button -->
                             <div style="text-align: center;">
-                                <button type="submit" class="btn btn-secondary">Generate Timetable</button>
+                                <button type="submit" class="btn btn-secondary" id="generate">Generate Timetable</button>
                             </div>
                             <div class="login-options" style="margin-left: 250px;">
                 <a href="../../Dashboard/pages/sample.php" class="guest-link">
@@ -297,7 +333,6 @@ $allocations = isset($_SESSION['allocations']) ? $_SESSION['allocations'] : [];
     <?php
 include("../../connection.php");
 
-// Fetch professors from faculties table
 $professors = [];
 $prof_query = "SELECT faculty FROM faculties";
 $prof_result = mysqli_query($conn, $prof_query);
@@ -305,7 +340,6 @@ while ($row = mysqli_fetch_assoc($prof_result)) {
     $professors[] = $row['faculty'];
 }
 
-// Fetch subjects from subjects table
 $subjects = [];
 $sub_query = "SELECT subject_name FROM subjects";
 $sub_result = mysqli_query($conn, $sub_query);
@@ -313,7 +347,6 @@ while ($row = mysqli_fetch_assoc($sub_result)) {
     $subjects[] = $row['subject_name'];
 }
 
-// Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $allocations = $_POST['allocations'];
     $_SESSION['allocations'] = $allocations;
@@ -321,7 +354,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     exit();
 }
 
-// Get existing allocations from session
 $allocations = $_SESSION['allocations'] ?? [];
 ?>
 
@@ -341,62 +373,70 @@ $allocations = $_SESSION['allocations'] ?? [];
             new PerfectScrollbar(document.querySelector('#sidenav-scrollbar'))
         }
     </script>
-    <!-- Dynamic Subject and Professor Addition -->
 <script>
-    const professorOptions = <?php echo json_encode($professors); ?>;
-    const subjectOptions = <?php echo json_encode($subjects); ?>; // Assuming $subjects is an array of subjects from the backend
+   const professorOptions = <?php echo json_encode($professors); ?>;
+const subjectOptions = <?php echo json_encode($subjects); ?>; // Assuming $subjects is an array of subjects from the backend
 
-    function addSubjectRow() {
-        const table = document.getElementById('subject-rows');
-        const row = document.createElement('tr');
+function addSubjectRow() {
+    const table = document.getElementById('subject-rows');
+    const row = document.createElement('tr');
 
-        // Generate subject options HTML
-        let subjectOptionsHTML = `<option value="">Select Subject</option>`;
-        subjectOptions.forEach(subject => {
-            subjectOptionsHTML += `<option value="${subject}">${subject}</option>`;
-        });
+    let subjectOptionsHTML = `<option value="">Select Subject</option>`;
+    subjectOptions.forEach(subject => {
+        subjectOptionsHTML += `<option value="${subject}">${subject}</option>`;
+    });
 
-        // Generate professor options HTML
-        let professorOptionsHTML = `<option value="">Select Professor</option>`;
-        professorOptions.forEach(professor => {
-            professorOptionsHTML += `<option value="${professor}">${professor}</option>`;
-        });
+    let professorOptionsHTML = `<option value="">Select Professor</option>`;
+    professorOptions.forEach(professor => {
+        professorOptionsHTML += `<option value="${professor}">${professor}</option>`;
+    });
 
-        // Add row content
-        row.innerHTML = `
-            <td>
-                <select class="form-control" name="subjects[]" required>
-                    ${subjectOptionsHTML}
+    row.innerHTML = `
+        <td>
+            <select class="form-control" name="subjects[]" required>
+                ${subjectOptionsHTML}
+            </select>
+        </td>
+        <td>
+            <input type="number" class="form-control" name="lecture_per_week[]" min="1" max="15" value="3" required>
+        </td>
+        <td>
+            <div>
+                <label for="sectionA">Section A</label>
+                <select class="form-control" name="allocations[sectionA][]" required>
+                    ${professorOptionsHTML}
                 </select>
-            </td>
-            <td>
-                <div>
-                    <label for="sectionA">Section A</label>
-                    <select class="form-control" name="allocations[sectionA][]" required>
-                        ${professorOptionsHTML}
-                    </select>
-                </div>
-                <div>
-                    <label for="sectionB">Section B</label>
-                    <select class="form-control" name="allocations[sectionB][]" required>
-                        ${professorOptionsHTML}
-                    </select>
-                </div>
-                <div>
-                    <label for="sectionC">Section C</label>
-                    <select class="form-control" name="allocations[sectionC][]" required>
-                        ${professorOptionsHTML}
-                    </select>
-                </div>
-            </td>
-        `;
-        table.appendChild(row);
-    }
+            </div>
+            <div>
+                <label for="sectionB">Section B</label>
+                <select class="form-control" name="allocations[sectionB][]" required>
+                    ${professorOptionsHTML}
+                </select>
+            </div>
+            <div>
+                <label for="sectionC">Section C</label>
+                <select class="form-control" name="allocations[sectionC][]" required>
+                    ${professorOptionsHTML}
+                </select>
+            </div>
+        </td>
+    `;
+    table.appendChild(row);
+}
+
+    </script>
 </script>
-    <!-- Github buttons -->
     <script async defer src="https://buttons.github.io/buttons.js"></script>
-    <!-- Control Center for Material Dashboard: parallax effects, scripts for the example pages etc -->
     <script src="../assets/js/material-dashboard.min.js?v=3.2.0"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const generate = document.getElementById('generate');
+
+        viewButton.addEventListener('click', function() {
+            window.location.href = '../pages/generate.php';
+        });
+    });
+    </script>
 </body>
 
 </html>

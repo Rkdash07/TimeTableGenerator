@@ -218,6 +218,7 @@ if (isset($_POST['submit'])) {
                                         <input type="text" class="form-control" id="subjectCode" name="subject_code"
                                             placeholder="Enter subject code" value="<?php echo isset($_POST['subject_code']) ? htmlspecialchars($_POST['subject_code']) : ''; ?>" required>
                                         <?php if (!empty($subjectCodeError)): ?>
+
                                             <div class="text-danger"><?php echo $subjectCodeError; ?></div>
                                         <?php endif; ?>
                                     </div>
