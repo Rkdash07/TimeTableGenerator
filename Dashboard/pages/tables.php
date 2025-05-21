@@ -15,30 +15,44 @@
 <?php
 session_start();
 include("../../connection.php");
+$success_message = '';
+// Fetch professors and subjects for dropdowns
+$professors = [];
+$prof_query = "SELECT faculty FROM faculties";
+$prof_result = mysqli_query($conn, $prof_query);
+while ($row = mysqli_fetch_assoc($prof_result)) {
+    $professors[] = $row['faculty'];
+}
 
+$subjects_list = [];
+$sub_query = "SELECT subject_name FROM subjects";
+$sub_result = mysqli_query($conn, $sub_query);
+while ($row = mysqli_fetch_assoc($sub_result)) {
+    $subjects_list[] = $row['subject_name'];
+}
+
+// Optionally clear session if faculties are set
 if (isset($_SESSION['faculties'])) {
     session_unset(); 
 }
+if (isset($_POST['action']) && $_POST['action'] === 'save') {
+if (!empty($_POST['faculties'])) {
+    $faculties = explode("\n", trim($_POST['faculties']));
+} else {
+    $faculties = []; 
+}
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    if (!empty($_POST['faculties'])) {
-        $faculties = explode("\n", trim($_POST['faculties']));
-    } else {
-        $faculties = []; 
-    }
+$subjects = isset($_POST['subjects']) ? $_POST['subjects'] : [];
+$allocations = isset($_POST['allocations']) ? $_POST['allocations'] : [];
 
-    $subjects = $_POST['subjects'];
-    $allocations = $_POST['allocations'];
-    $lecture_per_week = $_POST['lecture_per_week'];
+    
+$_SESSION['faculties'] = $faculties;
+$_SESSION['subjects'] = $subjects;
+$_SESSION['allocations'] = $allocations;
 
-    $_SESSION['faculties'] = $faculties;
-    $_SESSION['subjects'] = $subjects;
-    $_SESSION['allocations'] = $allocations;
-
-    header('Location: table.php');
-    if (!empty($subjects) && !empty($allocations)) {
+    // Insert into subject_faculty
+    if (!empty($subjects)) {
         foreach ($subjects as $idx => $subject_name) {
-            $lecture_count = isset($lecture_per_week[$idx]) ? intval($lecture_per_week[$idx]) : 3;
             $sub_stmt = $conn->prepare("SELECT sno FROM subjects WHERE subject_name = ?");
             $sub_stmt->bind_param("s", $subject_name);
             $sub_stmt->execute();
@@ -60,25 +74,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $fac_stmt->close();
 
                         if ($faculty_id) {
-                            $insert_stmt = $conn->prepare("INSERT INTO subject_faculty (subject_id, faculty_id, section, lecture_per_week) VALUES (?, ?, ?, ?)
-                            ON DUPLICATE KEY UPDATE faculty_id = VALUES(faculty_id), lecture_per_week = VALUES(lecture_per_week)");
-                        $insert_stmt->bind_param("iisi", $subject_id, $faculty_id, $section, $lecture_count);
-                        $insert_stmt->execute();
-                        $insert_stmt->close();
+                           $insert_stmt = $conn->prepare("INSERT INTO subject_faculty (subject_id, faculty_id, section) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE faculty_id = VALUES(faculty_id)");
+                           $insert_stmt->bind_param("iis", $subject_id, $faculty_id, $section);
+                            $insert_stmt->execute();
+                            $insert_stmt->close();
+                            
                         }
                     }
                 }
             }
         }
+        $success_message = "Data added successfully!!";  
     }
-
-    exit();
 }
 
-$faculties = isset($_SESSION['faculties']) ? $_SESSION['faculties'] : [];
-$subjects = isset($_SESSION['subjects']) ? $_SESSION['subjects'] : [];
-$allocations = isset($_SESSION['allocations']) ? $_SESSION['allocations'] : [];
+// For form repopulation
+$faculties = $_SESSION['faculties'] ?? [];
+$subjects = $_SESSION['subjects'] ?? [];
+$allocations = $_SESSION['allocations'] ?? [];
 ?>
+<?php if (!empty($success_message)): ?>
+    <div class="alert alert-success" style="text-align:center;">
+        <?php echo htmlspecialchars($success_message); ?>
+    </div>
+<?php endif; ?>
+
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -167,37 +188,37 @@ $allocations = isset($_SESSION['allocations']) ? $_SESSION['allocations'] : [];
             <ul class="navbar-nav">
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/dashboard.php">
-                        <i class="material-symbols-rounded opacity-5">dashboard</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Home</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/faculties.php">
-                        <i class="material-symbols-rounded opacity-5">receipt_long</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Faculties</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/subjects.php">
-                        <i class="material-symbols-rounded opacity-5">view_in_ar</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Subjects</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-white bg-gradient-dark active" href="../pages/tables.php">
-                        <i class="material-symbols-rounded opacity-5">table_view</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Tables</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/profile.php">
-                        <i class="material-symbols-rounded opacity-5">person</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Profile</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/logout.php">
-                        <i class="material-symbols-rounded opacity-5">assignment</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Logout</span>
                     </a>
                 </li>
@@ -229,7 +250,7 @@ $allocations = isset($_SESSION['allocations']) ? $_SESSION['allocations'] : [];
                 </div>
                 <div class="card-body px-0 pb-2">
                     <div class="form-container">
-                        <form method="POST" action="generate.php" id="timetableForm">
+                        <form method="post" action="tables.php" id="timetableForm">
 
                             
                             <div class="form-group">
@@ -239,9 +260,6 @@ $allocations = isset($_SESSION['allocations']) ? $_SESSION['allocations'] : [];
     <tr>
         <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">
             Subject
-        </th>
-        <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">
-            Lectures/Week
         </th>
         <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">
             Assign Professors for Each Section
@@ -255,22 +273,16 @@ if (!empty($subjects)) {
         ?>
         <tr>
         <td>
-                <select class="form-control" name="subjects[]" required>
-                    <option value="">Select Subject</option>
-                    <?php
-                    foreach ($subjects as $sub) {
-                        echo '<option value="' . htmlspecialchars($sub) . '">' . htmlspecialchars($sub) . '</option>';
-                    }
-                    ?>
-                </select>
-            </td>
-            <td>
-        <input type="number" class="form-control" 
-               name="lecture_per_week[]" 
-               min="1" max="10" 
-               value="3" required>
-          </td>
-            
+        <select class="form-control" name="subjects[]" required>
+    <option value="">Select Subject</option>
+    <?php
+    foreach ($subjects_list as $sub) {
+        $selected = (isset($subjects[$key]) && $subjects[$key] == $sub) ? 'selected' : '';
+        echo '<option value="' . htmlspecialchars($sub) . '" ' . $selected . '>' . htmlspecialchars($sub) . '</option>';
+    }
+    ?>
+</select>
+     </td>
             <td>
                 <div>
                     <label for="sectionA">Section A</label>
@@ -316,7 +328,8 @@ if (!empty($subjects)) {
                             </div>
 
                             <div style="text-align: center;">
-                                <button type="submit" class="btn btn-secondary" id="generate">Generate Timetable</button>
+                            <button type="submit" class="btn btn-secondary" id="save" name="action" value="save">Save</button>
+                            <button type="submit" class="btn btn-secondary" id="generate" name="action" value="generate">Generate Timetable</button>
                             </div>
                             <div class="login-options" style="margin-left: 250px;">
                 <a href="../../Dashboard/pages/sample.php" class="guest-link">
@@ -330,32 +343,7 @@ if (!empty($subjects)) {
         </div>
     </main>
 
-    <?php
-include("../../connection.php");
-
-$professors = [];
-$prof_query = "SELECT faculty FROM faculties";
-$prof_result = mysqli_query($conn, $prof_query);
-while ($row = mysqli_fetch_assoc($prof_result)) {
-    $professors[] = $row['faculty'];
-}
-
-$subjects = [];
-$sub_query = "SELECT subject_name FROM subjects";
-$sub_result = mysqli_query($conn, $sub_query);
-while ($row = mysqli_fetch_assoc($sub_result)) {
-    $subjects[] = $row['subject_name'];
-}
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $allocations = $_POST['allocations'];
-    $_SESSION['allocations'] = $allocations;
-    header('Location: table.php');
-    exit();
-}
-
-$allocations = $_SESSION['allocations'] ?? [];
-?>
+    
 
 
     <!--   Core JS Files   -->
@@ -374,68 +362,65 @@ $allocations = $_SESSION['allocations'] ?? [];
         }
     </script>
 <script>
-   const professorOptions = <?php echo json_encode($professors); ?>;
-const subjectOptions = <?php echo json_encode($subjects); ?>; // Assuming $subjects is an array of subjects from the backend
+    // Use the correct PHP variables for all professors and all subjects
+    const professorOptions = <?php echo json_encode($professors); ?>;
+    const subjectOptions = <?php echo json_encode($subjects_list); ?>;
 
-function addSubjectRow() {
-    const table = document.getElementById('subject-rows');
-    const row = document.createElement('tr');
+    function addSubjectRow() {
+        const table = document.getElementById('subject-rows');
+        const row = document.createElement('tr');
 
-    let subjectOptionsHTML = `<option value="">Select Subject</option>`;
-    subjectOptions.forEach(subject => {
-        subjectOptionsHTML += `<option value="${subject}">${subject}</option>`;
-    });
+        let subjectOptionsHTML = `<option value="">Select Subject</option>`;
+        subjectOptions.forEach(subject => {
+            subjectOptionsHTML += `<option value="${subject}">${subject}</option>`;
+        });
 
-    let professorOptionsHTML = `<option value="">Select Professor</option>`;
-    professorOptions.forEach(professor => {
-        professorOptionsHTML += `<option value="${professor}">${professor}</option>`;
-    });
+        let professorOptionsHTML = `<option value="">Select Professor</option>`;
+        professorOptions.forEach(professor => {
+            professorOptionsHTML += `<option value="${professor}">${professor}</option>`;
+        });
 
-    row.innerHTML = `
-        <td>
-            <select class="form-control" name="subjects[]" required>
-                ${subjectOptionsHTML}
-            </select>
-        </td>
-        <td>
-            <input type="number" class="form-control" name="lecture_per_week[]" min="1" max="15" value="3" required>
-        </td>
-        <td>
-            <div>
-                <label for="sectionA">Section A</label>
-                <select class="form-control" name="allocations[sectionA][]" required>
-                    ${professorOptionsHTML}
+        row.innerHTML = `
+            <td>
+                <select class="form-control" name="subjects[]" required>
+                    ${subjectOptionsHTML}
                 </select>
-            </div>
-            <div>
-                <label for="sectionB">Section B</label>
-                <select class="form-control" name="allocations[sectionB][]" required>
-                    ${professorOptionsHTML}
-                </select>
-            </div>
-            <div>
-                <label for="sectionC">Section C</label>
-                <select class="form-control" name="allocations[sectionC][]" required>
-                    ${professorOptionsHTML}
-                </select>
-            </div>
-        </td>
-    `;
-    table.appendChild(row);
-}
+            </td>
+            <td>
+                <div>
+                    <label for="sectionA">Section A</label>
+                    <select class="form-control" name="allocations[sectionA][]" required>
+                        ${professorOptionsHTML}
+                    </select>
+                </div>
+                <div>
+                    <label for="sectionB">Section B</label>
+                    <select class="form-control" name="allocations[sectionB][]" required>
+                        ${professorOptionsHTML}
+                    </select>
+                </div>
+                <div>
+                    <label for="sectionC">Section C</label>
+                    <select class="form-control" name="allocations[sectionC][]" required>
+                        ${professorOptionsHTML}
+                    </select>
+                </div>
+            </td>
+        `;
+        table.appendChild(row);
+    }
+</script>
 
-    </script>
 </script>
     <script async defer src="https://buttons.github.io/buttons.js"></script>
     <script src="../assets/js/material-dashboard.min.js?v=3.2.0"></script>
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const generate = document.getElementById('generate');
-
-        viewButton.addEventListener('click', function() {
-            window.location.href = '../pages/generate.php';
-        });
-    });
+    document.getElementById('generate').addEventListener('click', function() {
+    document.getElementById('timetableForm').action = 'generate.php';
+});
+document.getElementById('save').addEventListener('click', function() {
+    document.getElementById('timetableForm').action = 'tables.php';
+});
     </script>
 </body>
 

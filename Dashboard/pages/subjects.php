@@ -18,30 +18,32 @@ include("../../connection.php");
 $subjectNameError = "";
 $subjectCodeError = "";
 $successMessage = "";
-
+$subjectHoursError = "";
 if (isset($_POST['submit'])) {
     $subjectName = $_POST['subject_name'];
     $subjectCode = $_POST['subject_code'];
+    $subjectHours = $_POST['subject_hours_per_week'];
+
     if (empty($subjectName)) {
         $subjectNameError = "Subject name is required.";
     }
     if (empty($subjectCode)) {
         $subjectCodeError = "Subject code is required.";
     }
+    if (empty($subjectHours) || !is_numeric($subjectHours) || $subjectHours <= 0) {
+        $subjectHoursError = "Valid subject hours per week are required.";
+    }
 
-    if (empty($subjectNameError) && empty($subjectCodeError)) {
-        $stmt = mysqli_prepare($conn, "INSERT INTO subjects (subject_name, subject_code) VALUES (?, ?)");
-
+    if (empty($subjectNameError) && empty($subjectCodeError) && empty($subjectHoursError)) {
+        $stmt = mysqli_prepare($conn, "INSERT INTO subjects (subject_name, subject_code, subject_hours_per_week) VALUES (?, ?, ?)");
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, "ss", $subjectName, $subjectCode);
-
+            mysqli_stmt_bind_param($stmt, "ssi", $subjectName, $subjectCode, $subjectHours);
             if (mysqli_stmt_execute($stmt)) {
                 $successMessage = "Subject added successfully!";
-                $_POST['subject_name'] = $_POST['subject_code'] = '';
+                $_POST['subject_name'] = $_POST['subject_code'] = $_POST['subject_hours_per_week'] = '';
             } else {
                 $successMessage = "Error: " . mysqli_error($conn);
             }
-
             mysqli_stmt_close($stmt);
         } else {
             $successMessage = "Error preparing statement: " . mysqli_error($conn);
@@ -124,37 +126,37 @@ if (isset($_POST['submit'])) {
             <ul class="navbar-nav">
                 <li class="nav-item">
                     <a class="nav-link   text-dark" href="../pages/dashboard.php">
-                        <i class="material-symbols-rounded opacity-5">dashboard</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Home</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/faculties.php">
-                        <i class="material-symbols-rounded opacity-5">receipt_long</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Faculties</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-white bg-gradient-dark active" href="../pages/subjects.php">
-                        <i class="material-symbols-rounded opacity-5">view_in_ar</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Subjects</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/tables.php">
-                        <i class="material-symbols-rounded opacity-5">table_view</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Tables</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/profile.php">
-                        <i class="material-symbols-rounded opacity-5">person</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Profile</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/logout.php">
-                        <i class="material-symbols-rounded opacity-5">assignment</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Logout</span>
                     </a>
                 </li>
@@ -220,6 +222,14 @@ if (isset($_POST['submit'])) {
                                         <?php if (!empty($subjectCodeError)): ?>
 
                                             <div class="text-danger"><?php echo $subjectCodeError; ?></div>
+                                        <?php endif; ?>
+                                    </div>
+                                    <div class="form-group">
+                                         <label for="subjectHours">Subject Hours/Week:</label>
+                                        <input type="number" class="form-control" id="subjectHours" name="subject_hours_per_week"
+                                         placeholder="Enter hours per week" value="<?php echo isset($_POST['subject_hours_per_week']) ? htmlspecialchars($_POST['subject_hours_per_week']) : ''; ?>"    required min="1">
+                                        <?php if (!empty($subjectHoursError)): ?>
+                                          <div class="text-danger"><?php echo $subjectHoursError; ?></div>
                                         <?php endif; ?>
                                     </div>
                                     <div style="text-align: center;">

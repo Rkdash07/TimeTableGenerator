@@ -65,37 +65,37 @@
             <ul class="navbar-nav">
             <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/dashboard.php">
-                        <i class="material-symbols-rounded opacity-5">dashboard</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Home</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/faculties.php">
-                        <i class="material-symbols-rounded opacity-5">receipt_long</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Faculties</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/subjects.php">
-                        <i class="material-symbols-rounded opacity-5">view_in_ar</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Subjects</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-white bg-gradient-dark active" href="../pages/tables.php">
-                        <i class="material-symbols-rounded opacity-5">table_view</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Tables</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/profile.php">
-                        <i class="material-symbols-rounded opacity-5">person</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Profile</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link text-dark" href="../pages/logout.php">
-                        <i class="material-symbols-rounded opacity-5">assignment</i>
+                        <i class="material-symbols-rounded opacity-5"></i>
                         <span class="nav-link-text ms-1">Logout</span>
                     </a>
                 </li>
@@ -110,7 +110,6 @@
                 <nav aria-label="breadcrumb">
                     <ol class="breadcrumb bg-transparent mb-0 pb-0 pt-1 px-0 me-sm-6 me-5">
                         <li class="breadcrumb-item text-sm text-dark active" aria-current="page">
-                            <strong>Faculties</strong>
                         </li>
                     </ol>
                 </nav>
