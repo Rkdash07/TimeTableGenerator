@@ -95,19 +95,68 @@ function crossover($parent1, $parent2) {
     for ($i = 0; $i < count($parent1); $i++) {
         $child[] = (rand(0, 1) == 0) ? $parent1[$i] : $parent2[$i];
     }
-    return $child;
+    return repair_timetable($child); // Add this
 }
 
-function mutate($timetable, $subject_faculty, $mutation_rate = 0.1) {
-    for ($i = 0; $i < count($timetable); $i++) {
-        for ($j = 0; $j < count($timetable[$i]); $j++) {
-            if (rand() / getrandmax() < $mutation_rate) {
-                $timetable[$i][$j] = $subject_faculty[array_rand($subject_faculty)];
+function repair_timetable($timetable) {
+    // Count subjects and remove excess allocations
+    $subject_counts = [];
+    foreach ($timetable as $day) {
+        foreach ($day as $period) {
+            if ($period !== null) {
+                $sid = $period['sno'];
+                $subject_counts[$sid] = ($subject_counts[$sid] ?? 0) + 1;
+            }
+        }
+    }
+
+    // Replace excess subjects with null
+    foreach ($timetable as $i => $day) {
+        foreach ($day as $j => $period) {
+            if ($period !== null) {
+                $sid = $period['sno'];
+                $allowed = $period['subject_hours_per_week'];
+                if ($subject_counts[$sid] > $allowed) {
+                    $timetable[$i][$j] = null;
+                    $subject_counts[$sid]--;
+                }
             }
         }
     }
     return $timetable;
 }
+
+function mutate($timetable, $subject_faculty, $mutation_rate = 0.1) {
+
+    $subject_counts = [];
+    foreach ($timetable as $day) {
+        foreach ($day as $period) {
+            if ($period !== null) {
+                $sid = $period['sno'];
+                $subject_counts[$sid] = ($subject_counts[$sid] ?? 0) + 1;
+            }
+        }
+    }
+
+    
+    for ($i = 0; $i < count($timetable); $i++) {
+        for ($j = 0; $j < count($timetable[$i]); $j++) {
+            if (rand() / getrandmax() < $mutation_rate) {
+                $current_subject = $timetable[$i][$j];
+                $new_subject = $subject_faculty[array_rand($subject_faculty)];
+                
+    
+                $current_count = $subject_counts[$new_subject['sno']] ?? 0;
+                if ($current_count < $new_subject['subject_hours_per_week']) {
+                    $timetable[$i][$j] = $new_subject;
+                    $subject_counts[$new_subject['sno']] = $current_count + 1;
+                }
+            }
+        }
+    }
+    return $timetable;
+}
+
 
 
 function genetic_algorithm($conn, $generations = 200, $population_size = 30) {
@@ -197,7 +246,7 @@ if (isset($_POST['generate'])) {
             <button type="submit" name="generate"  class="btn btn-secondary btn-lg">Generate</button>
         </form>
         <?php if ($timetable): ?>
-            <h3>Generated Timetable</h3>
+            <h3>Timetable</h3>
         <?php
         $timetable_html = timetable_to_html($timetable);
         echo $timetable_html;

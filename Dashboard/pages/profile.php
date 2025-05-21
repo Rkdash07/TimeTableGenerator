@@ -7,9 +7,6 @@ if (!isset($_SESSION['username'])) {
     exit();
 }
 
-
-
-
 // Handle profile picture upload
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_FILES["imageUpload"])) {
     $target_dir = "../uploads/"; // Directory where uploaded files will be stored
