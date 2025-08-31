@@ -102,4 +102,41 @@ Genetic Algorithms are particularly well-suited for timetabling problems because
 
 The system implements a sophisticated genetic algorithm with the following components:
 
-#### **1. Population Initialization**
+
+## 👨‍💻 Contact
+
+**Project Maintainer**: Rkdash07
+
+- **GitHub**: [@Rkdash07](https://github.com/Rkdash07)
+- **Project Repository**: [TimeTableGenerator](https://github.com/Rkdash07/TimeTableGenerator)
+- **Issues**: [Report Bugs](https://github.com/Rkdash07/TimeTableGenerator/issues)
+
+---
+
+
+### Contribution Areas
+
+- 🐛 **Bug Fixes**: Report and fix issues
+- 🚀 **New Features**: Add enhanced functionality  
+- 📚 **Documentation**: Improve README and code comments
+- 🎨 **UI/UX**: Enhance user interface design
+- ⚡ **Performance**: Optimize algorithm efficiency
+- 🧪 **Testing**: Add unit and integration tests
+
+## 📄 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+
+### 🌟 Show Your Support
+
+If this project helped you, please consider giving it a ⭐ on GitHub!
+
+### 📈 Project Stats
+
+![GitHub stars](https://img.shields.io/github/stars/Rkdash07/TimeTableGenerator?style=social)
+![GitHub forks](https://img.shields.io/github/forks/Rkdash07/TimeTableGenerator?style=social)
+![GitHub watchers](https://img.shields.io/github/watchers/Rkdash07/TimeTableGenerator?style=social)
+
+**Made with ❤️ for the educational community**
+
